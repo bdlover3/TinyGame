@@ -23,6 +23,8 @@ export class plane {
     }
     setTowards(value: PlaneDirection) {
         this.towards = value;
+        if (this.position&&this.position.length > 0)
+            this.position = this.makePosition(this.position[0], value)
     }
     makePosition(value: Vec2, towards: PlaneDirection): Array<Vec2> {
         let position = new Array<Vec2>(10)

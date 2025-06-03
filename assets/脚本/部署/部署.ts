@@ -1,15 +1,42 @@
 import { _decorator, Component, assetManager, Button, Label, Color, Node, Prefab, instantiate, Canvas } from 'cc';
 const { ccclass, property } = _decorator;
-import Game from "./Game"
+import Game, { GameStatus } from "./Game"
 import { planeSprit } from '../../resources/预制/飞机/planeSprit';
-
-
+import Observers from '../Observers';
+const ob = Observers.getInstance()
 const game: Game = Game.getInstance()
 @ccclass('部署')
 export class NewComponent extends Component {
     @property({ type: Prefab })
     private planePrefab: Prefab = null
     protected onLoad(): void {
+
+        ob.addObserver('gameReady', () => {
+            // 创建开始战斗按钮
+            const startBtn = new Node('StartFightBtn');
+            const btnComp = startBtn.addComponent(Button);
+            const labelNode = new Node('Label');
+            const label = labelNode.addComponent(Label);
+            label.string = '开始战斗';
+            labelNode.parent = startBtn;
+            startBtn.setPosition(200, 0, 0);
+            this.node.addChild(startBtn);
+
+            btnComp.node.on(Button.EventType.CLICK, () => {
+                // 移除按钮
+                startBtn.removeFromParent();
+                // 生成敌方棋盘
+                game.UI.enemyBoard.initBoard(game.enemyBoard);
+                // 变更状态
+                game.status = GameStatus.FIGHT;
+            });
+        });
+        ob.addObserver('gamePre', () => {
+            const startBtn = this.node.getChildByName('StartFightBtn');
+            if (startBtn) {
+                startBtn.removeFromParent();
+            }
+        });
     }
     start() {
 
@@ -28,6 +55,8 @@ export class NewComponent extends Component {
             game.UI.myPlanes[i] = planeNode
             planeNodes.push(planeNode);
         }
+
+
 
     }
 

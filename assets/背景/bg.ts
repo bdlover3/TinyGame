@@ -12,8 +12,8 @@ export class bg extends Component {
         const node = this.node;
         node.position = node.position.add3f(-speed * deltaTime, 0, 0);
 
-        if (node.position.x <= -node.getComponent(UITransform).width) {
-            node.position = node.position.add3f(node.getComponent(UITransform).width , 0, 0);
+        if (node.position.x <= -1000) {
+            node.position = node.position.add3f(990 , 0, 0);
         }
     }
 }

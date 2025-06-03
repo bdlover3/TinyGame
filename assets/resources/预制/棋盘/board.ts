@@ -3,7 +3,7 @@ import Observers from '../../../脚本/Observers';
 // Update the path below to the correct location of your 'plane' module
 import { plane } from '../飞机/plane';
 // If the above path is incorrect, adjust the number of '../' as needed to match your project structure.
-import Game from "./../../../脚本/部署/Game"
+import Game, { GameStatus } from "./../../../脚本/部署/Game"
 const { ccclass, property } = _decorator;
 const ob = Observers.getInstance();
 const game = Game.getInstance();
@@ -16,14 +16,14 @@ export class board extends Component {
     private cellSize = 50; // 每个格子的大小
     private graphics = null!; // Graphics组件
     private dragGraphics = null!; // 拖动时的Graphics组件
-    private mouseCell: Vec2 = new Vec2(-1, -1);
-    private lastMouseCell: Vec2 = new Vec2(-1, -1);
+    private lastcell = new Vec2
     onLoad() {
         if (this.node.getParent().name == "己方棋盘") {
             game.UI.myBoard = this
         }
         else {
             game.UI.enemyBoard = this
+            this.node.on(Input.EventType.MOUSE_DOWN,this.shoot,this)
         }
 
         this.graphics = this.graphicsNode.getComponent(Graphics);
@@ -38,36 +38,95 @@ export class board extends Component {
         // 添加点击事件监听=
         ob.addObserver('drawProjection', this.drawProjection.bind(this));
 
-        // 注册鼠标移动事件
-        input.on(Input.EventType.MOUSE_MOVE, this.getMouseCell, this);
+    }
+    flash(pos)
+    {
+        const x = pos.x * this.cellSize + 50;
+        const y = pos.y * this.cellSize + 150;
+        this.graphics.fillColor = new Color(128, 128, 128, 128);
+        this.graphics.rect(x, y, this.cellSize, this.cellSize);
+        this.graphics.fill();
+        this.graphics.stroke();
+
+        setTimeout(() => {
+            this.graphics.clear();
+            // 重新绘制棋盘格线
+            for (let i = 0; i < 10; i++) {
+                for (let j = 0; j < 10; j++) {
+                    const gx = i * this.cellSize + 50;
+                    const gy = j * this.cellSize + 150;
+                    this.graphics.rect(gx, gy, this.cellSize, this.cellSize);
+                    this.graphics.stroke();
+                }
+            }
+        }, 500);
+    }
+    destroyed(pos): boolean {
+        const x = pos.x * this.cellSize + 50;
+        const y = pos.y * this.cellSize + 150;
+        this.graphics.fillColor = new Color(255, 0, 0, 128); // 半透明红色
+        this.graphics.rect(x, y, this.cellSize, this.cellSize);
+        this.graphics.fill();
+        this.graphics.stroke();
+        return true;
+        
+    }
+
+    shoot(event){
+        if(game.status!= GameStatus.FIGHT)
+            return
+        if (game.fight.turn != 0)
+            return
+        const pos = this.convertTOCell(event.getLocation())
+        game.fire(1,pos)
 
     }
-    getMouseCell(event: EventMouse) {
-        if (event) {
-            this.mouseCell.x = Math.floor((event.getUILocation().x - 50) / this.cellSize)
-            this.mouseCell.y = Math.floor((event.getUILocation().y - 150) / this.cellSize)
-        }
-        console.log(this.mouseCell)
+
+    convertTOCell(location) {
+        let mouseCell = new Vec2
+        mouseCell.x = Math.floor((location.x - 50) / this.cellSize)
+        mouseCell.y = Math.floor((location.y - 150) / this.cellSize)
+        return mouseCell
+
     }
-    drawProjection(plane: plane, isclick?) {
-        //没有变化则返回
-        if (this.mouseCell == this.lastMouseCell)
+    drawProjection(location, plane: plane, isclick?) {
+        if (game.status != GameStatus.PRE && game.status != GameStatus.READY)
             return
-        //飞机没有初始化则返回
-        if (isclick)
-            console.log(plane)
-        if (isclick && plane.getPosition())
+        if (this.node.getParent().name != "己方棋盘")
             return
-        const position = isclick ? plane.getPosition() : plane.makePosition(this.mouseCell, plane.getTowards())
+
+        const mouseCell = this.convertTOCell(location)
+        if (isclick) {
+            if ((plane.getPosition().length < 10)) {
+                return
+            }
+        }
+        else {
+            if (this.lastcell === mouseCell)
+                return
+        }
+
+        this.lastcell = mouseCell
+        const position = isclick ? plane.getPosition() : plane.makePosition(mouseCell, plane.getTowards())
         //遍历position 如果positon所有点都在棋盘内,则在每个positon所在的格子绘制半透明灰色
         const boardSize = 10;
         const allInBoard = position.every(
             (pos: Vec2) =>
                 pos.x >= 0 && pos.x < boardSize && pos.y >= 0 && pos.y < boardSize
+        ) && game.myPlanes.every(
+            (otherPlane: plane) => {
+                if (plane == otherPlane)
+                    return true;
+                const otherPos = otherPlane.getPosition?.();
+                if (!otherPos) return true;
+                // 检查当前位置与已有飞机是否有重叠
+                return position.every(
+                    (p: Vec2) => !otherPos.some((op: Vec2) => op.x === p.x && op.y === p.y)
+                );
+            }
         );
 
         this.dragGraphics.clear();
-
         if (allInBoard) {
             this.dragGraphics.fillColor = new Color(128, 128, 128, 128);
             for (const pos of position) {
@@ -81,6 +140,35 @@ export class board extends Component {
         }
         else
             plane.setPosition(null)
+
+        for (const otherPlane of game.myPlanes) {
+            if (otherPlane === plane) continue;
+            const otherPos = otherPlane.getPosition?.();
+            if (otherPos && otherPos.length === 10) {
+                this.dragGraphics.fillColor = new Color(210, 180, 140, 128); // 半透明土黄色
+                for (const pos of otherPos) {
+                    const x = pos.x * this.cellSize + 50;
+                    const y = pos.y * this.cellSize + 150;
+                    this.dragGraphics.rect(x, y, this.cellSize, this.cellSize);
+                    this.dragGraphics.fill();
+                    this.dragGraphics.stroke();
+                }
+            }
+        }
+
+        const allReady = game.myPlanes.every(
+            (p: plane) => {
+                const pos = p.getPosition?.();
+                return pos && pos.length === 10;
+            }
+        );
+        if (allReady) {
+            game.status = GameStatus.READY;
+        }
+        else {
+            game.status = GameStatus.PRE
+        }
+
 
     }
 
