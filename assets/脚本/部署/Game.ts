@@ -3,7 +3,7 @@ import Observers from 'db://assets/脚本/Observers';
 
 const ob = Observers.getInstance();
 import { plane } from '../../resources/预制/飞机/plane';
-import { Enum } from 'cc';
+import { Enum, Vec2 } from 'cc';
 
 export enum GameStatus {
     ONLOAD = 0,
@@ -19,15 +19,71 @@ enum CellDetail {
 }
 export default class Game {
     private static instance: Game;
-    private BOARD_SIZE = 10;
+    BOARD_SIZE = 10;
     myBoard: number[][] = []
     enemyBoard: number[][] = [];
     myPlanes = new Array<plane>()
     enemyPlanes = new Array<plane>()
+    winner = "你!"
     fight = {
         //开火顺序,首先由我方开火
         turn: 0,
+        enemyfired: [],
+        fire: (target, pos) => {
+            console.log(this.enemyBoard)
+            //如果是向敌方开火,则判断是否击中
+            if (target == 1) {
+                if (this.enemyBoard[pos.x][pos.y] == CellDetail.EMPTY) {
+                    console.log(this.UI.enemyBoard)
+                    this.UI.enemyBoard.flash(pos)
+                }
+                else {
+                    if (this.enemyBoard[pos.x][pos.y] == CellDetail.HASPLANE) {
+                        this.enemyBoard[pos.x][pos.y] = CellDetail.DESTROYED
+                        console.log(this.UI.enemyBoard)
+                        this.UI.enemyBoard.destroyed(pos)
+                    }
+                }
+                //遍历enemyboard 如果没有1了 则游戏结束
+                if (this.enemyBoard.every((row) => row.every((cell) => cell != CellDetail.HASPLANE))) {
+                    this.winner = "你!"
+                    this.status = GameStatus.END
+                }
+                else {
+                    this.fight.turn = 1
+                    setTimeout(() => {
+                        //随机向我方任意位置开火,如果发现有飞机被击中,则优先向该飞机周围开火
+                        let x = Math.floor(Math.random() * 10), y = Math.floor(Math.random() * 10);
+                        //生成与enemyfired不重复的x,y
+                        while (this.fight.enemyfired.some((p) => p.x == x && p.y == y)) {
+                            x = Math.floor(Math.random() * 10);
+                            y = Math.floor(Math.random() * 10);
+                        }
+                        this.fight.enemyfired.push([x, y])
+                        console.log(this.myBoard)
+                        console.log(x, y)
+                        if (this.myBoard[x][y] == CellDetail.EMPTY) {
+                            this.UI.myBoard.flash(new Vec2(x, y))
+                        }
+                        else {
+                            if (this.myBoard[x][y] == CellDetail.HASPLANE) {
+                                this.myBoard[x][y] = CellDetail.DESTROYED
+                                this.UI.myBoard.destroyed(new Vec2(x, y))
+                            }
+                        }
+                        this.fight.turn = 0
+                        //遍历myboard 如果全是2 则游戏结束
+                        if (this.myBoard.every((row) => row.every((cell) => cell != CellDetail.HASPLANE))) {
+                            this.status = GameStatus.END
+                            this.winner = "敌方!"
+                        }
+                    }, 500);
+                }
+            }
+            else {
 
+            }
+        }
     }
     UI = {
         myBoard: null,
@@ -41,21 +97,7 @@ export default class Game {
         }
         return Game.instance;
     }
-    fire(target, pos) {
-        console.log(this.enemyBoard)
-        if (target == 1) {
-            if (this.enemyBoard[pos.x][pos.y] == CellDetail.EMPTY) {
-                console.log(this.UI.enemyBoard)
-                this.UI.enemyBoard.flash(pos)
-            }
-            else {
-                if (this.enemyBoard[pos.x][pos.y] == CellDetail.HASPLANE) {
-                    this.enemyBoard[pos.x][pos.y] = CellDetail.DESTROYED
-                    this.UI.enemyBoard.destroyed(pos)
-                }
-            }
-        }
-    }
+
     private _status = GameStatus.ONLOAD;
     get status() {
         return this._status;

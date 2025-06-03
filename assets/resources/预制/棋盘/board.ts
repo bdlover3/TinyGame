@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Graphics, Label, Color, input, Input, UITransform, EventMouse, Vec2 } from 'cc';
+import { _decorator, Component, Node, Graphics, Label, Color, input, Input, UITransform, EventMouse, Vec2, Vec3 } from 'cc';
 import Observers from '../../../脚本/Observers';
 // Update the path below to the correct location of your 'plane' module
 import { plane } from '../飞机/plane';
@@ -17,18 +17,20 @@ export class board extends Component {
     private graphics = null!; // Graphics组件
     private dragGraphics = null!; // 拖动时的Graphics组件
     private lastcell = new Vec2
+    private UIlocation = new Vec2(50, 150);
     onLoad() {
         if (this.node.getParent().name == "己方棋盘") {
             game.UI.myBoard = this
         }
         else {
             game.UI.enemyBoard = this
-            this.node.on(Input.EventType.MOUSE_DOWN,this.shoot,this)
+            this.node.on(Input.EventType.TOUCH_END, this.shoot, this)
         }
 
         this.graphics = this.graphicsNode.getComponent(Graphics);
         this.graphics.clear(); // 清除旧的绘制
         this.graphics.lineWidth = 3; // 设置线条宽度
+
         this.dragGraphics = this.DragGraphicsNode.getComponent(Graphics);
         this.dragGraphics.clear(); // 清除旧的绘制
         this.dragGraphics.lineWidth = 3; // 设置线条宽度
@@ -39,64 +41,76 @@ export class board extends Component {
         ob.addObserver('drawProjection', this.drawProjection.bind(this));
 
     }
-    flash(pos)
-    {
-        const x = pos.x * this.cellSize + 50;
-        const y = pos.y * this.cellSize + 150;
+
+    allClear() {
+        this.graphics.clear(); // 清除旧的绘制
+        this.dragGraphics.clear(); // 清除旧的绘制
+    }
+    flash(pos) {
+        const x = pos.x * this.cellSize + this.UIlocation.x;
+        const y = pos.y * this.cellSize + this.UIlocation.y;
         this.graphics.fillColor = new Color(128, 128, 128, 128);
         this.graphics.rect(x, y, this.cellSize, this.cellSize);
         this.graphics.fill();
         this.graphics.stroke();
 
-        setTimeout(() => {
-            this.graphics.clear();
-            // 重新绘制棋盘格线
-            for (let i = 0; i < 10; i++) {
-                for (let j = 0; j < 10; j++) {
-                    const gx = i * this.cellSize + 50;
-                    const gy = j * this.cellSize + 150;
-                    this.graphics.rect(gx, gy, this.cellSize, this.cellSize);
-                    this.graphics.stroke();
-                }
-            }
-        }, 500);
+        // setTimeout(() => {
+        //     // 重新绘制棋盘格线
+        //     for (let i = 0; i < 10; i++) {
+        //         for (let j = 0; j < 10; j++) {
+        //             const gx = i * this.cellSize + this.UIlocation.x;
+        //             const gy = j * this.cellSize + this.UIlocation.y;
+        //             this.graphics.rect(gx, gy, this.cellSize, this.cellSize);
+        //             this.graphics.stroke();
+        //         }
+        //     }
+        // }, 500);
     }
     destroyed(pos): boolean {
-        const x = pos.x * this.cellSize + 50;
-        const y = pos.y * this.cellSize + 150;
+        const x = pos.x * this.cellSize + this.UIlocation.x;
+        const y = pos.y * this.cellSize + this.UIlocation.y;
         this.graphics.fillColor = new Color(255, 0, 0, 128); // 半透明红色
         this.graphics.rect(x, y, this.cellSize, this.cellSize);
         this.graphics.fill();
         this.graphics.stroke();
         return true;
-        
+
     }
 
-    shoot(event){
-        if(game.status!= GameStatus.FIGHT)
+    shoot(event) {
+        if (game.status != GameStatus.FIGHT)
             return
         if (game.fight.turn != 0)
             return
-        const pos = this.convertTOCell(event.getLocation())
-        game.fire(1,pos)
+        // 假设 event 是鼠标事件对象，从外部传入
+        const mouseLocation = new Vec2(event.getUILocation().x, event.getUILocation().y);
+
+        const pos = this.convertTOCell(mouseLocation);
+        if (pos.x < 0 || pos.x > 9 || pos.y < 0 || pos.y > 9)
+            return
+        game.fight.fire(1, pos)
 
     }
 
-    convertTOCell(location) {
+    convertTOCell(location: Vec2) {
         let mouseCell = new Vec2
-        mouseCell.x = Math.floor((location.x - 50) / this.cellSize)
-        mouseCell.y = Math.floor((location.y - 150) / this.cellSize)
+        // 将世界坐标转换为本地UI坐标
+        if (this.node.getParent().name == "己方棋盘")
+            mouseCell.x = Math.floor((location.x - this.UIlocation.x) / this.cellSize)
+        else
+            mouseCell.x = Math.floor((location.x - this.UIlocation.x - 669) / this.cellSize)
+        mouseCell.y = Math.floor((location.y - this.UIlocation.y) / this.cellSize)
         return mouseCell
 
     }
-    drawProjection(location, plane: plane, isclick?) {
+    drawProjection(location, plane: plane, istouch?) {
         if (game.status != GameStatus.PRE && game.status != GameStatus.READY)
             return
         if (this.node.getParent().name != "己方棋盘")
             return
 
         const mouseCell = this.convertTOCell(location)
-        if (isclick) {
+        if (istouch) {
             if ((plane.getPosition().length < 10)) {
                 return
             }
@@ -107,7 +121,7 @@ export class board extends Component {
         }
 
         this.lastcell = mouseCell
-        const position = isclick ? plane.getPosition() : plane.makePosition(mouseCell, plane.getTowards())
+        const position = istouch ? plane.getPosition() : plane.makePosition(mouseCell, plane.getTowards())
         //遍历position 如果positon所有点都在棋盘内,则在每个positon所在的格子绘制半透明灰色
         const boardSize = 10;
         const allInBoard = position.every(
@@ -130,8 +144,8 @@ export class board extends Component {
         if (allInBoard) {
             this.dragGraphics.fillColor = new Color(128, 128, 128, 128);
             for (const pos of position) {
-                const x = pos.x * this.cellSize + 50;
-                const y = pos.y * this.cellSize + 150;
+                const x = pos.x * this.cellSize + this.UIlocation.x;
+                const y = pos.y * this.cellSize + this.UIlocation.y;
                 this.dragGraphics.rect(x, y, this.cellSize, this.cellSize);
                 this.dragGraphics.fill();
                 this.dragGraphics.stroke();
@@ -147,8 +161,8 @@ export class board extends Component {
             if (otherPos && otherPos.length === 10) {
                 this.dragGraphics.fillColor = new Color(210, 180, 140, 128); // 半透明土黄色
                 for (const pos of otherPos) {
-                    const x = pos.x * this.cellSize + 50;
-                    const y = pos.y * this.cellSize + 150;
+                    const x = pos.x * this.cellSize + this.UIlocation.x;
+                    const y = pos.y * this.cellSize + this.UIlocation.y;
                     this.dragGraphics.rect(x, y, this.cellSize, this.cellSize);
                     this.dragGraphics.fill();
                     this.dragGraphics.stroke();
@@ -162,6 +176,7 @@ export class board extends Component {
                 return pos && pos.length === 10;
             }
         );
+        //确认是否已经可以开始游戏
         if (allReady) {
             game.status = GameStatus.READY;
         }
@@ -196,7 +211,7 @@ export class board extends Component {
             // 设置位置：左侧，y与格子对齐
             labelNode.setPosition(
                 30 - 667, // 距离棋盘左侧一定距离
-                i * this.cellSize + 100 + this.cellSize / 2 - 375 + 50
+                i * this.cellSize + 100 + this.cellSize / 2 - 375 + this.UIlocation.x
             );
             this.node.addChild(labelNode);
         }
@@ -211,16 +226,16 @@ export class board extends Component {
             label.color = new Color(0, 0, 0, 255);
             // 设置位置：下方，x与格子对齐
             labelNode.setPosition(
-                j * this.cellSize + 50 + this.cellSize / 2 - 667, // 距离棋盘下方一定距离
-                80 - 375 + 50// 棋盘下方
+                j * this.cellSize + this.UIlocation.x + this.cellSize / 2 - 667, // 距离棋盘下方一定距离
+                80 - 375 + this.UIlocation.x// 棋盘下方
             );
             this.node.addChild(labelNode);
         }
         // 绘制棋盘
         for (let i = 0; i < boardSize; i++) {
             for (let j = 0; j < boardSize; j++) {
-                const x = i * this.cellSize + 50;
-                const y = j * this.cellSize + 150;
+                const x = i * this.cellSize + this.UIlocation.x;
+                const y = j * this.cellSize + this.UIlocation.y;
                 this.graphics.rect(x, y, this.cellSize, this.cellSize);
                 this.graphics.stroke();
             }

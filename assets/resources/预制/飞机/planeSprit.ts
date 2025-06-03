@@ -1,4 +1,4 @@
-import { _decorator, Component, EventMouse, UITransform, Vec3, Input, input, Vec2 } from 'cc';
+import { _decorator, Component, EventMouse, UITransform, Vec3, Input, input, Vec2, EventTouch } from 'cc';
 import Observers from '../../../脚本/Observers'
 import { plane, PlaneDirection } from "./plane"
 import Game, { GameStatus } from 'db://assets/脚本/部署/Game';
@@ -35,18 +35,18 @@ export class planeSprit extends Component {
 
     onLoad() {
         // 只监听本节点的点击
-        this.node.on(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
-        this.node.on(Input.EventType.MOUSE_MOVE, this.onMouseMove, this);
-        this.node.on(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+        this.node.on(Input.EventType.TOUCH_START, this.onTouchStart, this);
+this.node.on(Input.EventType.TOUCH_MOVE, this.onTouchMove, this);
+this.node.on(Input.EventType.TOUCH_END, this.onTouchEnd, this);
     }
 
     onDestroy() {
-        this.node.off(Input.EventType.MOUSE_DOWN, this.onMouseDown, this);
-        this.node.off(Input.EventType.MOUSE_MOVE, this.onMouseMove, this);
-        this.node.off(Input.EventType.MOUSE_UP, this.onMouseUp, this);
+        this.node.off(Input.EventType.TOUCH_START, this.onTouchStart, this);
+this.node.off(Input.EventType.TOUCH_MOVE, this.onTouchMove, this);
+this.node.off(Input.EventType.TOUCH_END, this.onTouchEnd, this);
     }
 
-    private onMouseDown(event: EventMouse) {
+    private onTouchStart(event: EventTouch) {
 
         if (game.status != GameStatus.PRE && game.status != GameStatus.READY)
             return
@@ -55,7 +55,7 @@ export class planeSprit extends Component {
         this._isDrag = false;
     }
 
-    private onMouseMove(event: EventMouse) {
+    private onTouchMove(event: EventTouch) {
 
 
         if (game.status != GameStatus.PRE && game.status != GameStatus.READY)
@@ -68,14 +68,13 @@ export class planeSprit extends Component {
         this.node.setPosition(localPos);
         this.plane.setPosition([new Vec2(localPos.x, localPos.y)]);
         // 触发showPlaneDashedLine事件 发送(1)当前节点位置和(2)当前节点的朝向=
-        ob.notify('drawProjection', event.getLocation(), this.plane);
+        ob.notify('drawProjection', event.getUILocation(), this.plane);
         this._isDrag = true;
 
         //todo 临时将z提升 避免被两外两架飞机截取事件
     }
 
-    private onMouseUp(event: EventMouse) {
-
+    private onTouchEnd(event: EventTouch) {
         if (game.status != GameStatus.PRE && game.status != GameStatus.READY)
             return
 
@@ -85,7 +84,7 @@ export class planeSprit extends Component {
                 // 只有点击时才旋转
                 this.setTowards((this.plane.getTowards() + 1) % 4); // 顺时针旋转    
                 if (this.plane.getPosition())
-                    ob.notify('drawProjection', event.getLocation(), this.plane, true);
+                    ob.notify('drawProjection', event.getUILocation(), this.plane, true);
             }
         }
 
