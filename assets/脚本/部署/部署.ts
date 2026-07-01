@@ -37,10 +37,10 @@ export class NewComponent extends Component {
             startBtn.setPosition(200, 0, 0);
             this.node.addChild(startBtn);
 
-            // —— 难度选择 UI：5 个按钮纵向排列在开战按钮上方 ——
-            // 开战按钮在 (200, 0)，难度面板放在其正上方，从 y=600 往下排
+            // —— 难度选择 UI：5 个按钮横向排列在开战按钮正上方 ——
+            // 开战按钮在 (200, 0) 高 200px，难度面板紧贴其上方
             const difficultyContainer = new Node('DifficultyPicker');
-            difficultyContainer.setPosition(200, 600, 0);
+            difficultyContainer.setPosition(200, 200, 0);
             this.node.addChild(difficultyContainer);
 
             const difficultyTitle = new Node('DifficultyTitle');
