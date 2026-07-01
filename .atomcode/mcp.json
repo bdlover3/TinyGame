@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "context7": {
+      "description": "Live documentation lookup for Cocos Creator / TypeScript / npm libraries",
+      "command": "npx",
+      "args": ["-y", "context7"],
+      "env": {}
+    },
+    "typescript": {
+      "description": "TypeScript language server integration for type checking and diagnostics",
+      "command": "npx",
+      "args": ["-y", "@anthropic/typescript-mcp"]
+    }
+  }
+}

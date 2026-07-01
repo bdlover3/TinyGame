@@ -5,6 +5,7 @@ import { planeSprit } from '../../resources/预制/飞机/planeSprit';
 import Observers from '../Observers';
 import { plane } from '../../resources/预制/飞机/plane';
 import { Sprite, SpriteFrame, resources } from 'cc';
+import { DIFFICULTY_LEVELS } from './AIStrategy';
 const ob = Observers.getInstance()
 const game: Game = Game.getInstance()
 @ccclass('部署')
@@ -36,6 +37,61 @@ export class NewComponent extends Component {
             startBtn.setPosition(200, 0, 0);
             this.node.addChild(startBtn);
 
+            // —— 难度选择 UI：5 个按钮纵向排列在开战按钮左侧 ——
+            const difficultyContainer = new Node('DifficultyPicker');
+            difficultyContainer.setPosition(-450, 0, 0);
+            this.node.addChild(difficultyContainer);
+
+            const difficultyTitle = new Node('DifficultyTitle');
+            const titleLabel = difficultyTitle.addComponent(Label);
+            titleLabel.string = '选择 AI 难度';
+            titleLabel.fontSize = 40;
+            titleLabel.color = Color.WHITE;
+            difficultyTitle.setPosition(0, 200, 0);
+            difficultyTitle.parent = difficultyContainer;
+
+            // 保存所有难度按钮的 label，用于切换高亮色
+            const difficultyLabels: Label[] = [];
+            // 默认选中当前 game.aiLevel
+            const updateHighlight = () => {
+                difficultyLabels.forEach((lbl, idx) => {
+                    lbl.color = (DIFFICULTY_LEVELS[idx].level === game.aiLevel) ? Color.YELLOW : Color.WHITE;
+                });
+            };
+
+            DIFFICULTY_LEVELS.forEach((diff, idx) => {
+                const btnNode = new Node(`DiffBtn_${diff.level}`);
+                btnNode.setPosition(0, 120 - idx * 80, 0);
+                const btn = btnNode.addComponent(Button);
+                const lbl = btnNode.addComponent(Label);
+                lbl.string = `Lv${diff.level} ${diff.name}`;
+                lbl.fontSize = 32;
+                lbl.lineHeight = 36;
+                difficultyLabels.push(lbl);
+
+                // 悬浮提示：在按钮下方显示该难度描述（hover 时显示，touch end 后隐藏）
+                const descNode = new Node(`Desc_${diff.level}`);
+                const descLabel = descNode.addComponent(Label);
+                descLabel.string = diff.desc;
+                descLabel.fontSize = 20;
+                descLabel.color = Color.CYAN;
+                descNode.setPosition(0, -30, 0);
+                descNode.parent = btnNode;
+                descNode.active = false;
+
+                btnNode.on(Input.EventType.MOUSE_ENTER, () => { descNode.active = true; });
+                btnNode.on(Input.EventType.MOUSE_LEAVE, () => { descNode.active = false; });
+
+                btnNode.on(Input.EventType.TOUCH_END, () => {
+                    game.aiLevel = diff.level;
+                    updateHighlight();
+                    console.log(`AI 难度切换为 Lv${diff.level} ${diff.name}`);
+                });
+
+                btnNode.parent = difficultyContainer;
+            });
+            updateHighlight();
+
             btnComp.node.on(Input.EventType.TOUCH_END, () => {
                 //遍历所有飞机 将飞机所在的点放到myBoard中
                 for (let i = 0; i < 3; i++) {
@@ -46,8 +102,12 @@ export class NewComponent extends Component {
                         game.myBoard[pos.x][pos.y] = 1;
                     }
                 }
-                // 移除按钮
+                // 移除按钮 + 难度选择 UI
                 startBtn.removeFromParent();
+                difficultyContainer.removeFromParent();
+                // 重置 AI 状态（开战前清空，确保新策略从零开始）
+                game.fight.enemyfired = [];
+                game.aiHits = [];
                 // 生成敌方棋盘
                 game.UI.enemyBoard.initBoard(game.enemyBoard);
                 // 变更状态
@@ -58,6 +118,10 @@ export class NewComponent extends Component {
             const startBtn = this.node.getChildByName('StartFightBtn');
             if (startBtn) {
                 startBtn.removeFromParent();
+            }
+            const picker = this.node.getChildByName('DifficultyPicker');
+            if (picker) {
+                picker.removeFromParent();
             }
         });
         ob.addObserver('gameEnd', () => {
@@ -104,6 +168,9 @@ export class NewComponent extends Component {
                 game.myBoard = Array.from({ length: game.BOARD_SIZE }, () => Array(game.BOARD_SIZE).fill(0));
                 game.enemyBoard = Array.from({ length: game.BOARD_SIZE }, () => Array(game.BOARD_SIZE).fill(0));
                 game.enemyPlanes = [];
+                // 重置 AI 状态
+                game.fight.enemyfired = [];
+                game.aiHits = [];
 
                 //移除己方飞机
                 for (let i = 0; i < 3; i++) {

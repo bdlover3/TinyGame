@@ -1,0 +1,36 @@
+{
+  "hooks": {
+    "postToolUse": [
+      {
+        "name": "TypeScript Type Check",
+        "description": "Run tsc --noEmit after editing .ts files to catch type errors early",
+        "match": {
+          "tool": ["Write", "Edit", "WriteFile"],
+          "filePattern": "**/*.ts"
+        },
+        "command": "npx tsc --noEmit 2>&1 || true"
+      },
+      {
+        "name": "ESLint Format Check",
+        "description": "Run ESLint on edited .ts files to maintain consistent code style",
+        "match": {
+          "tool": ["Write", "Edit"],
+          "filePattern": "**/*.ts"
+        },
+        "command": "npx eslint --fix --quiet 2>&1 || true"
+      }
+    ],
+    "preToolUse": [
+      {
+        "name": "Block Lock File Edits",
+        "description": "Prevent accidental edits to build/lock files",
+        "match": {
+          "tool": ["Write", "Edit"],
+          "filePattern": "**/{library,temp,build,node_modules}/**"
+        },
+        "action": "block",
+        "message": "⚠️ 禁止编辑构建产物或缓存文件（library/、temp/、build/、node_modules/）。请在 src/ 或 assets/ 中修改源码。"
+      }
+    ]
+  }
+}

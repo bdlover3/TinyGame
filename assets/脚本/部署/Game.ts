@@ -4,6 +4,7 @@ import Observers from 'db://assets/脚本/Observers';
 const ob = Observers.getInstance();
 import { plane } from '../../resources/预制/飞机/plane';
 import { Enum, Vec2 } from 'cc';
+import { AIStrategy, AIContext, FireTarget, createAIStrategy } from './AIStrategy';
 
 export enum GameStatus {
     ONLOAD = 0,
@@ -25,10 +26,16 @@ export default class Game {
     myPlanes = new Array<plane>()
     enemyPlanes = new Array<plane>()
     winner = "你!"
+    /** 当前 AI 难度等级 1-5，默认 1（萌新） */
+    aiLevel = 1
+    /** 已命中格子记录 [x, y]（供 AI 追击算法使用） */
+    aiHits: number[][] = [] as number[][]
+    /** 当前 AI 策略实例（每次开局按 aiLevel 创建） */
+    private aiStrategy: AIStrategy | null = null
     fight = {
         //开火顺序,首先由我方开火
         turn: 0,
-        enemyfired: [],
+        enemyfired: [] as number[][],
         fire: (target, pos) => {
             console.log(this.enemyBoard)
             //如果是向敌方开火,则判断是否击中
@@ -52,16 +59,28 @@ export default class Game {
                 else {
                     this.fight.turn = 1
                     setTimeout(() => {
-                        //随机向我方任意位置开火,如果发现有飞机被击中,则优先向该飞机周围开火
-                        let x = Math.floor(Math.random() * 10), y = Math.floor(Math.random() * 10);
-                        //生成与enemyfired不重复的x,y
-                        while (this.fight.enemyfired.some((p) => p.x == x && p.y == y)) {
-                            x = Math.floor(Math.random() * 10);
-                            y = Math.floor(Math.random() * 10);
+                        // —— AI 开火：按当前难度策略选择目标 ——
+                        // 懒初始化策略实例（若 aiLevel 变化或首次创建）
+                        if (!this.aiStrategy || this.aiStrategy.level !== this.aiLevel) {
+                            this.aiStrategy = createAIStrategy(this.aiLevel);
+                        }
+                        const ctx: AIContext = {
+                            myBoard: this.myBoard,
+                            enemyfired: this.fight.enemyfired,
+                            hits: this.aiHits,
+                            BOARD_SIZE: this.BOARD_SIZE,
+                        };
+                        const target: FireTarget = this.aiStrategy.chooseTarget(ctx);
+                        let x = target.x, y = target.y;
+                        // 防御：若策略返回的格子已开过火（理论不应发生），退回随机
+                        if (this.fight.enemyfired.some((p) => p[0] == x && p[1] == y)) {
+                            while (this.fight.enemyfired.some((p) => p[0] == x && p[1] == y)) {
+                                x = Math.floor(Math.random() * 10);
+                                y = Math.floor(Math.random() * 10);
+                            }
                         }
                         this.fight.enemyfired.push([x, y])
-                        console.log(this.myBoard)
-                        console.log(x, y)
+                        console.log(`[AI L${this.aiLevel}] fire at (${x},${y})`)
                         if (this.myBoard[x][y] == CellDetail.EMPTY) {
                             this.UI.myBoard.flash(new Vec2(x, y))
                         }
@@ -69,6 +88,8 @@ export default class Game {
                             if (this.myBoard[x][y] == CellDetail.HASPLANE) {
                                 this.myBoard[x][y] = CellDetail.DESTROYED
                                 this.UI.myBoard.destroyed(new Vec2(x, y))
+                                // 记录命中点，供追击算法使用
+                                this.aiHits.push([x, y])
                             }
                         }
                         this.fight.turn = 0
