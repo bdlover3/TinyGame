@@ -37,9 +37,10 @@ export class NewComponent extends Component {
             startBtn.setPosition(200, 0, 0);
             this.node.addChild(startBtn);
 
-            // —— 难度选择 UI：5 个按钮纵向排列在开战按钮左侧 ——
+            // —— 难度选择 UI：5 个按钮纵向排列在开战按钮上方 ——
+            // 开战按钮在 (200, 0)，难度面板放在其正上方，从 y=600 往下排
             const difficultyContainer = new Node('DifficultyPicker');
-            difficultyContainer.setPosition(-450, 0, 0);
+            difficultyContainer.setPosition(200, 600, 0);
             this.node.addChild(difficultyContainer);
 
             const difficultyTitle = new Node('DifficultyTitle');
@@ -47,7 +48,7 @@ export class NewComponent extends Component {
             titleLabel.string = '选择 AI 难度';
             titleLabel.fontSize = 40;
             titleLabel.color = Color.WHITE;
-            difficultyTitle.setPosition(0, 200, 0);
+            difficultyTitle.setPosition(0, 60, 0);
             difficultyTitle.parent = difficultyContainer;
 
             // 保存所有难度按钮的 label，用于切换高亮色
@@ -59,21 +60,23 @@ export class NewComponent extends Component {
                 });
             };
 
+            // 5 个按钮横向单行排列，避免遮挡且紧凑
             DIFFICULTY_LEVELS.forEach((diff, idx) => {
                 const btnNode = new Node(`DiffBtn_${diff.level}`);
-                btnNode.setPosition(0, 120 - idx * 80, 0);
+                // 横向间距 180，5 个按钮总宽 900，居中
+                btnNode.setPosition(-360 + idx * 180, 0, 0);
                 const btn = btnNode.addComponent(Button);
                 const lbl = btnNode.addComponent(Label);
                 lbl.string = `Lv${diff.level} ${diff.name}`;
-                lbl.fontSize = 32;
-                lbl.lineHeight = 36;
+                lbl.fontSize = 28;
+                lbl.lineHeight = 32;
                 difficultyLabels.push(lbl);
 
-                // 悬浮提示：在按钮下方显示该难度描述（hover 时显示，touch end 后隐藏）
+                // 悬浮提示：在按钮下方显示该难度描述
                 const descNode = new Node(`Desc_${diff.level}`);
                 const descLabel = descNode.addComponent(Label);
                 descLabel.string = diff.desc;
-                descLabel.fontSize = 20;
+                descLabel.fontSize = 18;
                 descLabel.color = Color.CYAN;
                 descNode.setPosition(0, -30, 0);
                 descNode.parent = btnNode;

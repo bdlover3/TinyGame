@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Graphics, Label, Color, input, Input, UITransform, EventMouse, Vec2, Vec3 } from 'cc';
+import { _decorator, Component, Node, Graphics, Color, input, Input, UITransform, EventMouse, Vec2, Vec3, tween } from 'cc';
 import Observers from '../../../脚本/Observers';
 // Update the path below to the correct location of your 'plane' module
 import { plane } from '../飞机/plane';
@@ -73,8 +73,55 @@ export class board extends Component {
         this.graphics.rect(x, y, this.cellSize, this.cellSize);
         this.graphics.fill();
         this.graphics.stroke();
+
+        // —— 爆炸特效：在该格子上加载 SVG 爆炸图，缩放后淡出 ——
+        this.showExplosion(x, y);
         return true;
 
+    }
+
+    /** 在棋盘坐标 (x, y) 处显示爆炸特效：用 Graphics 画放射状火花 + 缩放淡出 */
+    private showExplosion(x: number, y: number): void {
+        const node = new Node('Explosion');
+        node.setPosition(x + this.cellSize / 2, y + this.cellSize / 2, 10);
+        this.graphicsNode.parent.addChild(node);
+
+        const g = node.addComponent(Graphics);
+        // 外圈火焰（橙红半透明）
+        g.fillColor = new Color(255, 100, 0, 180);
+        g.circle(0, 0, 24);
+        g.fill();
+
+        // 内圈高亮（黄）
+        g.fillColor = new Color(255, 220, 50, 220);
+        g.circle(0, 0, 14);
+        g.fill();
+
+        // 8 个向外喷射的火焰尖刺
+        g.fillColor = new Color(255, 160, 0, 200);
+        for (let i = 0; i < 8; i++) {
+            const a = (Math.PI * 2 * i) / 8;
+            g.moveTo(0, 0);
+            g.lineTo(Math.cos(a - 0.25) * 8, Math.sin(a - 0.25) * 8);
+            g.lineTo(Math.cos(a) * 28, Math.sin(a) * 28);
+            g.lineTo(Math.cos(a + 0.25) * 8, Math.sin(a + 0.25) * 8);
+            g.close();
+            g.fill();
+        }
+
+        // 中心白点
+        g.fillColor = new Color(255, 255, 255, 255);
+        g.circle(0, 0, 5);
+        g.fill();
+
+        // 动画：缩小弹出 → 停留 → 淡出销毁
+        node.setScale(1.8, 1.8, 1);
+        tween(node)
+            .to(0.12, { scale: new Vec3(1.0, 1.0, 1) })
+            .delay(0.3)
+            .to(0.3, { scale: new Vec3(0.2, 0.2, 1), opacity: 0 })
+            .call(() => node.destroy())
+            .start();
     }
 
     shoot(event) {
