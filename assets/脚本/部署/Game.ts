@@ -37,17 +37,15 @@ export default class Game {
         turn: 0,
         enemyfired: [] as number[][],
         fire: (target, pos) => {
-            console.log(this.enemyBoard)
+            console.log(`[开火] target=${target} pos=(${pos.x},${pos.y})`)
             //如果是向敌方开火,则判断是否击中
             if (target == 1) {
                 if (this.enemyBoard[pos.x][pos.y] == CellDetail.EMPTY) {
-                    console.log(this.UI.enemyBoard)
                     this.UI.enemyBoard.flash(pos)
                 }
                 else {
                     if (this.enemyBoard[pos.x][pos.y] == CellDetail.HASPLANE) {
                         this.enemyBoard[pos.x][pos.y] = CellDetail.DESTROYED
-                        console.log(this.UI.enemyBoard)
                         this.UI.enemyBoard.destroyed(pos)
                     }
                 }

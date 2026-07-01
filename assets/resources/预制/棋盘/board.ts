@@ -114,12 +114,12 @@ export class board extends Component {
         g.circle(0, 0, 5);
         g.fill();
 
-        // 动画：缩小弹出 → 停留 → 淡出销毁
+        // 动画：缩小弹出 → 停留 → 缩到极小后销毁
         node.setScale(1.8, 1.8, 1);
         tween(node)
             .to(0.12, { scale: new Vec3(1.0, 1.0, 1) })
             .delay(0.3)
-            .to(0.3, { scale: new Vec3(0.2, 0.2, 1), opacity: 0 })
+            .to(0.3, { scale: new Vec3(0.01, 0.01, 1) })
             .call(() => node.destroy())
             .start();
     }
