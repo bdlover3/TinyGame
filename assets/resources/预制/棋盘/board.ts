@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Graphics, Color, input, Input, UITransform, EventMouse, Vec2, Vec3, tween } from 'cc';
+import { _decorator, Component, Node, Graphics, Color, input, Input, UITransform, EventMouse, Vec2, Vec3, tween, Label } from 'cc';
 import Observers from '../../../脚本/Observers';
 // Update the path below to the correct location of your 'plane' module
 import { plane } from '../飞机/plane';
